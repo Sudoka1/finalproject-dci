@@ -1,4 +1,4 @@
-import "dotenv/config";
+import "dotenv/config"; // 📌 Загрузка переменных из .env
 import express from "express";
 import mongoose from "mongoose";
 import cors from "cors";
@@ -24,30 +24,37 @@ app.use(cookieParser());
 // CORS Configuration
 app.use(
   cors({
-    origin: "http://localhost:5173", // Your frontend URL
-    credentials: true, // Allow credentials (cookies) to be sent
+    origin: "http://localhost:5173", // Frontend URL
+    credentials: true,
   })
 );
 
-// CSRF Protection Middleware
+// CSRF Protection
 const csrfProtection = csrf({
   cookie: {
     httpOnly: true,
-    secure: false, // Set to true if using HTTPS
-    sameSite: "Lax", // Allows cookies to be sent on same-site requests
+    secure: false, // true if HTTPS
+    sameSite: "Lax",
   },
 });
-app.use(csrfProtection);
+
+// ✅ Skip CSRF for auth routes
+const csrfExcludedRoutes = ["/api/auth/register", "/api/auth/login"];
+app.use((req, res, next) => {
+  if (csrfExcludedRoutes.includes(req.path)) {
+    return next();
+  }
+  csrfProtection(req, res, next);
+});
 
 // CSRF Token Route
 app.get("/api/csrf-token", (req, res) => {
   res.json({ csrfToken: req.csrfToken() });
 });
 
-// Error Handling Middleware for CSRF
+// Error Handling for CSRF
 app.use((err, req, res, next) => {
   if (err.code !== "EBADCSRFTOKEN") return next(err);
-  // CSRF token errors
   res.status(403).json({ message: "Invalid CSRF Token" });
 });
 
@@ -60,9 +67,8 @@ app.use("/api/payment", paymentRoutes);
 app.use("/api/admin/orders", adminOrderRoutes);
 app.use("/api/admin/users", adminUserRoutes);
 
-// Serve static assets if in production
+// Serve static files in production
 if (process.env.NODE_ENV === "production") {
-  // Set static folder
   const __dirname = path.resolve();
   app.use(express.static(path.join(__dirname, "client/build")));
   app.get("*", (req, res) =>
@@ -70,14 +76,14 @@ if (process.env.NODE_ENV === "production") {
   );
 }
 
-// Connect to MongoDB
+// MongoDB Connection
 mongoose
   .connect(process.env.MONGO_URI)
-  .then(() => console.log("MongoDB connected"))
-  .catch((err) => console.log("MongoDB connection error:", err));
+  .then(() => console.log("✅ MongoDB connected"))
+  .catch((err) => console.error("❌ MongoDB connection error:", err));
 
-// Start the server
+// Start server
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`🚀 Server running on port ${PORT}`);
 });
